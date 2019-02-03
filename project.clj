@@ -1,4 +1,4 @@
-(defproject com.github.rutledgepaulv/websocket-layer "0.1.0-SNAPSHOT"
+(defproject org.clojars.rutledgepaulv/websocket-layer "0.1.0-SNAPSHOT"
 
   :description
   "A layer of glue for jetty and core.async"

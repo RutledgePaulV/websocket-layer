@@ -1,11 +1,9 @@
 (ns websocket-layer.network
   (:require [clojure.core.async :as async]
             [ring.adapter.jetty9.websocket :as jws]
-            [websocket-layer.core :as napi]
+            [websocket-layer.core :as wl]
             [websocket-layer.encodings :as enc])
-  (:import (java.io ByteArrayInputStream)
-           (java.util UUID)
-           (clojure.core.async.impl.channels ManyToManyChannel)))
+  (:import (java.io ByteArrayInputStream)))
 
 (def ^:dynamic *encoder*)
 (def ^:dynamic *decoder*)
@@ -15,15 +13,6 @@
   "Execute the body and return nil if there was an error"
   [& body]
   `(try ~@body (catch Throwable _# nil)))
-
-(defn on-channel-close [^ManyToManyChannel chan f]
-  (add-watch
-    (.closed chan)
-    (UUID/randomUUID)
-    (fn [_ _ old-state new-state]
-      (when (and (not old-state) new-state)
-        (quietly (f)))))
-  chan)
 
 (defn send-message! [ws data]
   (let [finished (async/promise-chan)]
@@ -40,23 +29,23 @@
     finished))
 
 (defn on-connect [ws]
-  (let [outbound (napi/get-outbound)
+  (let [outbound (wl/get-outbound)
         sender   (bound-fn* send-message!)]
     (async/go-loop []
       (when-some [msg (async/<! outbound)]
         (async/<! (sender ws msg))
         (recur)))
-    (let [{:keys [id]} (swap! napi/*state* assoc :socket ws)]
-      (swap! napi/sockets assoc id napi/*state*))))
+    (let [{:keys [id]} (swap! wl/*state* assoc :socket ws)]
+      (swap! wl/sockets assoc id wl/*state*))))
 
-(defn on-error [ws e]
+(defn on-error [_ e]
   (*exception-handler* e))
 
-(defn on-close [ws status reason]
+(defn on-close [_ _ _]
   ; remove visibility of any ongoing activities
-  (let [[{:keys [id outbound subscriptions]}] (reset-vals! napi/*state* {})]
+  (let [[{:keys [id outbound subscriptions]}] (reset-vals! wl/*state* {})]
 
-    (swap! napi/sockets dissoc id)
+    (swap! wl/sockets dissoc id)
 
     (quietly (async/close! outbound))
 
@@ -64,8 +53,8 @@
       ; close all the open subscriptions
       (quietly (async/close! sub)))))
 
-(defn on-command [ws command]
-  (let [closure napi/*state*
+(defn on-command [_ command]
+  (let [closure wl/*state*
         topic   (get command :id)
         proto   (keyword (get command :proto))
         {:keys [outbound subscriptions]} (deref closure)]
@@ -73,7 +62,7 @@
     (case proto
 
       :request
-      (let [response (napi/handle-request (:data command))]
+      (let [response (wl/handle-request (:data command))]
         (async/put! outbound {:data response :proto proto :id topic}))
 
       :subscription
@@ -87,8 +76,8 @@
         nil
 
         :otherwise
-        (when-some [response (napi/handle-subscription (:data command))]
-          (on-channel-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
+        (when-some [response (wl/handle-subscription (:data command))]
+          (wl/on-chan-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
           (swap! closure assoc-in [:subscriptions topic] response)
           (async/go-loop []
             (if-some [res (async/<! response)]
@@ -98,7 +87,7 @@
               (async/>! outbound {:proto proto :id topic :close true})))))
 
       :push
-      (napi/handle-push (:data command)))))
+      (wl/handle-push (:data command)))))
 
 (defn on-text [ws message]
   (on-command ws (with-open [stream (ByteArrayInputStream. (.getBytes message))]
@@ -122,7 +111,7 @@
         [(mw [state handler]
            (fn [& args]
              (binding
-               [napi/*state*        state
+               [wl/*state*          state
                 *encoder*           encoder
                 *decoder*           decoder
                 *exception-handler* exception-handler]
@@ -130,7 +119,7 @@
                  (apply handler args)
                  (catch Exception e
                    (*exception-handler* e))))))]
-        (let [middleware (bound-fn* (partial mw (atom (napi/new-state upgrade-request))))]
+        (let [middleware (bound-fn* (partial mw (atom (wl/new-state upgrade-request))))]
           {:on-connect (middleware on-connect)
            :on-error   (middleware on-error)
            :on-close   (middleware on-close)

@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [cognitect.transit :as transit]
             [clojure.edn :as edn])
-  (:import (java.io ByteArrayOutputStream ByteArrayInputStream InputStream PushbackReader)))
+  (:import (java.io ByteArrayOutputStream InputStream PushbackReader)))
 
 
 (def encodings
@@ -29,11 +29,10 @@
       (let [output (ByteArrayOutputStream. 2048)
             writer (transit/writer output :json)]
         (transit/write writer data)
-        output))
+        (.toByteArray output)))
     :decoder
     (fn [^InputStream data]
-      (let [stream (ByteArrayInputStream. data)
-            reader (transit/reader stream :json)]
+      (let [reader (transit/reader data :json)]
         (transit/read reader)))}
    :transit-json-verbose
    {:encoder
@@ -41,9 +40,8 @@
       (let [output (ByteArrayOutputStream. 2048)
             writer (transit/writer output :json-verbose)]
         (transit/write writer data)
-        output))
+        (.toByteArray output)))
     :decoder
     (fn [^InputStream data]
-      (let [stream (ByteArrayInputStream. data)
-            reader (transit/reader stream :json-verbose)]
+      (let [reader (transit/reader data :json-verbose)]
         (transit/read reader)))}})

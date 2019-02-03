@@ -45,8 +45,8 @@
       (try
         (tests)
         (finally
-          (.stop *server*)
           (close *client*)
+          (.stop *server*)
           (.reset ^MultiFn wl/handle-push)
           (.reset ^MultiFn wl/handle-request)
           (.reset ^MultiFn wl/handle-subscription))))))
