@@ -186,3 +186,7 @@ out of my way. I don't need long-polling fallback.
 I don't intend to provide anything for this out of box since it's
 easy to implement yourself using subscriptions and atoms to keep
 track of the connections that belong in a particular broadcast group.
+
+#### Recommended clients?
+
+* [Haslett](https://github.com/weavejester/haslett)
