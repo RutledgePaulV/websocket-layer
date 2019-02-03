@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/RutledgePaulV/websocket-layer.svg?branch=develop)](https://travis-ci.org/RutledgePaulV/websocket-layer)
+
 ## Websocket Layer
 
 A clojure library that provides a little glue between jetty websockets and core.async.
