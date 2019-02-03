@@ -56,7 +56,7 @@ Initial request messages look like this:
 
 ```clojure
 {:id    "some-subscription-id"
- :proto "subscription"
+ :proto :subscription
  :data  {:kind :dispatch-key}}
 ```
 
@@ -64,7 +64,7 @@ Response messages look like this:
 
 ```clojure
 {:id    "some-subscription-id"
- :proto "subscription"
+ :proto :subscription
  :data  {:stuff :you-return}}
 ```
 
@@ -72,7 +72,7 @@ Either side can notify the other that it has lost interest in the topic:
 
 ```clojure
 {:id    "some-subscription-id"
- :proto "subscription"
+ :proto :subscription
  :close true}
 ```
 
@@ -83,7 +83,8 @@ Handlers look like this:
  (let [results (async/chan)]
    (async/go-loop []
      (async/<! (async/timeout 5000))
-     (async/>! results {:ping true}))
+     (async/>! results {:ping true})
+     (recur))
    results))
 ```
 
@@ -96,7 +97,7 @@ Send a request over a websocket and return a reply. Requests look like this:
 
 ```clojure
 {:id    "some-request-id"
- :proto "request"
+ :proto :request
  :data  {:kind :dispatch-key}}
 ```
 
@@ -104,7 +105,7 @@ Responses look like this:
 
 ```clojure
 {:id    "some-request-id"
- :proto "request"
+ :proto :request
  :data  {:stuff :you-return}}
 ```
 
@@ -123,7 +124,7 @@ Messages sent to the server look like this:
 
 ```clojure
 {:id    "some-push-id"
- :proto "push"
+ :proto :push
  :data  {:kind :dispatch-key}}
 ```
 

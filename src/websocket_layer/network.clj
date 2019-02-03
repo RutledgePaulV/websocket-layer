@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as async]
             [ring.adapter.jetty9.websocket :as jws]
             [websocket-layer.core :as napi]
-            [missing.core :as miss]
             [websocket-layer.encodings :as enc])
   (:import (java.io ByteArrayInputStream)
            (java.util UUID)
@@ -12,13 +11,18 @@
 (def ^:dynamic *decoder*)
 (def ^:dynamic *exception-handler*)
 
+(defmacro quietly
+  "Execute the body and return nil if there was an error"
+  [& body]
+  `(try ~@body (catch Throwable _# nil)))
+
 (defn on-channel-close [^ManyToManyChannel chan f]
   (add-watch
     (.closed chan)
     (UUID/randomUUID)
     (fn [_ _ old-state new-state]
       (when (and (not old-state) new-state)
-        (miss/quietly (f)))))
+        (quietly (f)))))
   chan)
 
 (defn send-message! [ws data]
@@ -54,11 +58,11 @@
 
     (swap! napi/sockets dissoc id)
 
-    (miss/quietly (async/close! outbound))
+    (quietly (async/close! outbound))
 
     (doseq [sub (vals subscriptions)]
       ; close all the open subscriptions
-      (miss/quietly (async/close! sub)))))
+      (quietly (async/close! sub)))))
 
 (defn on-command [ws command]
   (let [closure napi/*state*
@@ -84,7 +88,7 @@
 
         :otherwise
         (when-some [response (napi/handle-subscription (:data command))]
-          (on-channel-close response (fn [] (swap! closure miss/dissoc-in [:subscriptions topic])))
+          (on-channel-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
           (swap! closure assoc-in [:subscriptions topic] response)
           (async/go-loop []
             (if-some [res (async/<! response)]
@@ -126,12 +130,11 @@
                  (apply handler args)
                  (catch Exception e
                    (*exception-handler* e))))))]
-        (miss/map-vals
-          (binding-conveyor-fn
-            (partial mw (atom (napi/new-state upgrade-request))))
-          {:on-connect on-connect
-           :on-error   on-error
-           :on-close   on-close
-           :on-text    on-text
-           :on-bytes   on-bytes})))))
+        (let [middleware (binding-conveyor-fn
+                           (partial mw (atom (napi/new-state upgrade-request))))]
+          {:on-connect (middleware on-connect)
+           :on-error   (middleware on-error)
+           :on-close   (middleware on-close)
+           :on-text    (middleware on-text)
+           :on-bytes   (middleware on-bytes)})))))
 
