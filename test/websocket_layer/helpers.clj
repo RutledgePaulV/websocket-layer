@@ -50,3 +50,6 @@
           (.reset ^MultiFn wl/handle-push)
           (.reset ^MultiFn wl/handle-request)
           (.reset ^MultiFn wl/handle-subscription))))))
+
+(defn closed? [chan]
+  @(.closed chan))

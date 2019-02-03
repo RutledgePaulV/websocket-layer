@@ -1,7 +1,8 @@
 (ns websocket-layer.core-test
   (:require [clojure.test :refer :all]
             [websocket-layer.core :as wl]
-            [websocket-layer.helpers :as h])
+            [websocket-layer.helpers :as h]
+            [clojure.core.async :as async])
   (:import (java.util UUID)))
 
 (defonce fixtures
@@ -30,3 +31,38 @@
     (let [response (h/<-receive h/*client*)]
       (is (= [{:kind :message}] @received))
       (is (= (assoc request :data {:success true}) response)))))
+
+(deftest testing-subscriptions-client-close
+  (let [request   {:id    (UUID/randomUUID)
+                   :proto :subscription
+                   :data  {:kind :message}}
+        responses (async/chan 100)]
+    (defmethod wl/handle-subscription :message [data]
+      (async/>!! responses {:result 1})
+      (async/>!! responses {:result 2})
+      responses)
+    (h/send-> h/*client* request)
+    (is (= {:result 1} (:data (h/<-receive h/*client*))))
+    (is (= {:result 2} (:data (h/<-receive h/*client*))))
+    (is (not (h/closed? responses)))
+    (h/send-> h/*client* (assoc request :close true))
+    (Thread/sleep 100)
+    (is (h/closed? responses))))
+
+(deftest testing-subscriptions-server-close
+  (let [request   {:id    (UUID/randomUUID)
+                   :proto :subscription
+                   :data  {:kind :message}}
+        responses (async/chan 100)]
+    (defmethod wl/handle-subscription :message [data]
+      (async/>!! responses {:result 1})
+      (async/>!! responses {:result 2})
+      (future (Thread/sleep 1000) (async/close! responses))
+      responses)
+    (h/send-> h/*client* request)
+    (is (= {:result 1} (:data (h/<-receive h/*client*))))
+    (is (= {:result 2} (:data (h/<-receive h/*client*))))
+    (is (not (h/closed? responses)))
+    (Thread/sleep 1200)
+    (is (h/closed? responses))
+    (is (:close (h/<-receive h/*client*)))))

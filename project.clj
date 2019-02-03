@@ -11,7 +11,6 @@
 
   :dependencies
   [[org.clojure/clojure "1.10.0"]
-   [com.vodori/missing "0.1.6"]
    [org.clojure/core.async "0.4.490"]
    [info.sunng/ring-jetty9-adapter "0.12.2"]
    [cheshire "5.8.1"]
