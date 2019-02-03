@@ -11,8 +11,8 @@
   (let [received (atom [])]
     (defmethod wl/handle-push :message [data]
       (swap! received conj data))
-    (h/send h/*client*
-            {:id    (UUID/randomUUID)
+    (h/send-> h/*client*
+              {:id    (UUID/randomUUID)
              :proto :push
              :data  {:kind :message}})
     (Thread/sleep 100)

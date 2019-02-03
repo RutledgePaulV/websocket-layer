@@ -20,8 +20,8 @@
     (jetty/run-jetty (fn [& args] (apply handler args)) ring-opts)))
 
 (defprotocol Client
-  (send [this msg])
-  (receive [this])
+  (send-> [this msg])
+  (<-receive [this])
   (close [this]))
 
 (defn create-client []
@@ -29,9 +29,9 @@
         inbound (async/chan 100)
         client  (ws/connect uri :on-receive (fn [msg] (async/>!! inbound msg)))]
     (reify Client
-      (send [this msg]
+      (send-> [this msg]
         (ws/send-msg client (pr-str msg)))
-      (receive [this]
+      (<-receive [this]
         (edn/read-string (async/<!! inbound)))
       (close [this]
         (ws/close client)))))
