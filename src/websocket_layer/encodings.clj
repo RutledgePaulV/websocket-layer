@@ -29,7 +29,7 @@
       (let [output (ByteArrayOutputStream. 2048)
             writer (transit/writer output :json)]
         (transit/write writer data)
-        (.toByteArray output)))
+        (String. (.toByteArray output))))
     :decoder
     (fn [^InputStream data]
       (let [reader (transit/reader data :json)]
@@ -40,7 +40,7 @@
       (let [output (ByteArrayOutputStream. 2048)
             writer (transit/writer output :json-verbose)]
         (transit/write writer data)
-        (.toByteArray output)))
+        (String. (.toByteArray output))))
     :decoder
     (fn [^InputStream data]
       (let [reader (transit/reader data :json-verbose)]

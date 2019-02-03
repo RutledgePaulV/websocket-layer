@@ -3,17 +3,11 @@
   (:require [websocket-layer.encodings :refer :all])
   (:import (java.io ByteArrayInputStream)))
 
-(defn input-stream [encoded]
-  (cond
-    (string? encoded)
-    (input-stream (.getBytes encoded))
-
-    (bytes? encoded)
-    (ByteArrayInputStream. encoded)))
 
 (deftest test-encoders
   (doseq [{:keys [encoder decoder]} (vals encodings)]
     (let [input   {:test true}
-          encoded (encoder input)
-          decoded (decoder (input-stream encoded))]
-      (is (= decoded input)))))
+          encoded (encoder input)]
+      (is (string? encoded))
+      (let [decoded (decoder (ByteArrayInputStream. (.getBytes encoded)))]
+        (is (= decoded input))))))
