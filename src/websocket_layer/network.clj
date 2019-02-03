@@ -41,13 +41,13 @@
 
 (defn on-connect [ws]
   (let [outbound (napi/get-outbound)
-        sender   (binding-conveyor-fn send-message!)]
+        sender   (bound-fn* send-message!)]
     (async/go-loop []
       (when-some [msg (async/<! outbound)]
         (async/<! (sender ws msg))
-        (recur))
-      (let [{:keys [id]} (swap! napi/*state* assoc :socket ws)]
-        (swap! napi/sockets assoc id napi/*state*)))))
+        (recur)))
+    (let [{:keys [id]} (swap! napi/*state* assoc :socket ws)]
+      (swap! napi/sockets assoc id napi/*state*))))
 
 (defn on-error [ws e]
   (*exception-handler* e))
@@ -130,8 +130,7 @@
                  (apply handler args)
                  (catch Exception e
                    (*exception-handler* e))))))]
-        (let [middleware (binding-conveyor-fn
-                           (partial mw (atom (napi/new-state upgrade-request))))]
+        (let [middleware (bound-fn* (partial mw (atom (napi/new-state upgrade-request))))]
           {:on-connect (middleware on-connect)
            :on-error   (middleware on-error)
            :on-close   (middleware on-close)

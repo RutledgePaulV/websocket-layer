@@ -1,7 +1,24 @@
 (defproject com.github.rutledgepaulv/websocket-layer "0.1.0-SNAPSHOT"
-  :dependencies [[org.clojure/clojure "1.10.0"]
-                 [com.vodori/missing "0.1.6"]
-                 [org.clojure/core.async "0.4.490"]
-                 [info.sunng/ring-jetty9-adapter "0.12.2"]
-                 [cheshire "5.8.1"]
-                 [com.cognitect/transit-clj "0.8.313"]])
+
+  :description
+  "A layer of glue for jetty and core.async"
+
+  :url
+  "https://github.com/rutledgepaulv/websocket-layer"
+
+  :license
+  {:name "MIT" :url "http://opensource.org/licenses/MIT"}
+
+  :dependencies
+  [[org.clojure/clojure "1.10.0"]
+   [com.vodori/missing "0.1.6"]
+   [org.clojure/core.async "0.4.490"]
+   [info.sunng/ring-jetty9-adapter "0.12.2"]
+   [cheshire "5.8.1"]
+   [com.cognitect/transit-clj "0.8.313"]]
+
+  :profiles
+  {:test
+   {:dependencies
+    [[org.eclipse.jetty.websocket/websocket-client "9.4.14.v20181114"]
+     [stylefruits/gniazdo "1.1.1"]]}})

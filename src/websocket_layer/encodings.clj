@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [cognitect.transit :as transit]
             [clojure.edn :as edn])
-  (:import (java.io ByteArrayOutputStream ByteArrayInputStream InputStream)))
+  (:import (java.io ByteArrayOutputStream ByteArrayInputStream InputStream PushbackReader)))
 
 
 (def encodings
@@ -14,7 +14,7 @@
     :decoder
     (fn [^InputStream data]
       (with-open [reader (io/reader data)]
-        (edn/read reader)))}
+        (edn/read (PushbackReader. reader))))}
    :json
    {:encoder
     (fn [data]
