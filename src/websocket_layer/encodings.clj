@@ -15,14 +15,6 @@
     (fn [^InputStream data]
       (with-open [reader (io/reader data)]
         (edn/read reader)))}
-   :binary
-   {:encoder
-    (fn [data] data)
-    :decoder
-    (fn [^InputStream data]
-      (let [buffer (ByteArrayOutputStream.)]
-        (io/copy data buffer)
-        (.toByteArray buffer)))}
    :json
    {:encoder
     (fn [data]

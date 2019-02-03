@@ -29,6 +29,8 @@ I want within my applications.
 (def ws-endpoints 
   {"/ws" (net/websocket-handler {:encoding :json})})
 
+; other available encodings include: :edn, :transit, and :transit-verbose
+
 (def ring-options 
   {:port                 3000 
    :join?                false
