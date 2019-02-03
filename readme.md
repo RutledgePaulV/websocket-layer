@@ -59,7 +59,8 @@ Initial request messages look like this:
 ```clojure
 {:id    "some-subscription-id"
  :proto :subscription
- :data  {:kind :dispatch-key}}
+ :data  {:kind :dispatch-key
+         :stuff :you-send}}
 ```
 
 Response messages look like this:
@@ -81,11 +82,11 @@ Either side can notify the other that it has lost interest in the topic:
 Handlers look like this:
 
 ```clojure
-(defmethod wl/handle-subscription :dispatch-key [data]
+(defmethod wl/handle-subscription :dispatch-key [{:keys [kind stuff]}]
  (let [results (async/chan)]
    (async/go-loop []
      (async/<! (async/timeout 5000))
-     (async/>! results {:ping true})
+     (async/>! results {:stuff :you-return})
      (recur))
    results))
 ```
@@ -100,7 +101,8 @@ Send a request over a websocket and return a reply. Requests look like this:
 ```clojure
 {:id    "some-request-id"
  :proto :request
- :data  {:kind :dispatch-key}}
+ :data  {:kind  :dispatch-key
+         :stuff :you-send}}
 ```
 
 Responses look like this:
@@ -114,8 +116,8 @@ Responses look like this:
 Handlers look like this:
 
 ```clojure
-(defmethod wl/handle-request :dispatch-key [data]
- {:success true})
+(defmethod wl/handle-request :dispatch-key [{:keys [kind stuff]}]
+ {:stuff :you-return})
 ```
 
 ___
@@ -127,7 +129,8 @@ Messages sent to the server look like this:
 ```clojure
 {:id    "some-push-id"
  :proto :push
- :data  {:kind :dispatch-key}}
+ :data  {:kind  :dispatch-key
+         :stuff :you-send}}
 ```
 
 There is no server->client equivalent. Server push doesn't really make any sense. 
@@ -139,8 +142,9 @@ their desire for messages from the server by initiating a subscription.
 Handlers look like this:
 
 ```clojure
-(defmethod wl/handle-push :dispatch-key [data]
- {:note :return-value-is-ignored})
+(defmethod wl/handle-push :dispatch-key [{:keys [kind stuff]}]
+ (do-something-with-stuff stuff)
+ :return-value-is-ignored)
 ```
 
 ___
