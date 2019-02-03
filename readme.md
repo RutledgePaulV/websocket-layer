@@ -164,14 +164,14 @@ ___
  (wl/swap-state! update :history (fnil conj []) (get data :page)))
  
 (defmethod wl/handle-request :navigation-history [data]
- (get (wl/get-state) :history []))
+ {:history (get (wl/get-state) :history [])})
 ```
 
 #### Connection Tracking
 
 ```clojure
 (defmethod wl/handle-request :number-of-peers [data]
- (count @wl/sockets))
+ {:peers (count @wl/sockets)})
 ```
 
 
