@@ -23,7 +23,7 @@
     (fn [^InputStream data]
       (with-open [reader (io/reader data)]
         (chesh/parse-stream reader true)))}
-   :transit
+   :transit-json
    {:encoder
     (fn [data]
       (let [output (ByteArrayOutputStream. 2048)
@@ -35,7 +35,7 @@
       (let [stream (ByteArrayInputStream. data)
             reader (transit/reader stream :json)]
         (transit/read reader)))}
-   :transit-verbose
+   :transit-json-verbose
    {:encoder
     (fn [data]
       (let [output (ByteArrayOutputStream. 2048)
