@@ -9,6 +9,10 @@
   :license
   {:name "MIT" :url "http://opensource.org/licenses/MIT"}
 
+  :deploy-repositories
+  [["releases" :clojars]
+   ["snapshots" :clojars]]
+
   :dependencies
   [[org.clojure/clojure "1.10.0"]
    [org.clojure/core.async "0.4.490"]
