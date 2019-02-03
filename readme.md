@@ -98,7 +98,8 @@ ___
 
 #### Request / Response
 
-Send a request over a websocket and return a reply. Requests look like this:
+Send a request over a websocket and return a reply. You can use this
+as an xhr alternative. Requests look like this:
 
 ```clojure
 {:id    "some-request-id"
