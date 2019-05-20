@@ -100,29 +100,41 @@
                      (*decoder* stream)))))
 
 (defn websocket-handler
-  [{:keys [exception-handler encoding encoder decoder]
-    :or   {encoding          :json
+  [{:keys [exception-handler encoding encoder decoder middleware]
+    :or   {encoding          :edn
+           middleware        []
            exception-handler (fn [^Exception exception]
-                               (.printStackTrace exception))}}]
+                               (when exception
+                                 (.printStackTrace exception)))}}]
   (let [encoder (or encoder (get-in enc/encodings [encoding :encoder]))
         decoder (or decoder (get-in enc/encodings [encoding :decoder]))]
-    (fn [upgrade-request]
-      (letfn
-        [(mw [state handler]
-           (fn [& args]
-             (binding
-               [wl/*state*          state
-                *encoder*           encoder
-                *decoder*           decoder
-                *exception-handler* exception-handler]
-               (try
-                 (apply handler args)
-                 (catch Exception e
-                   (*exception-handler* e))))))]
-        (let [middleware (bound-fn* (partial mw (atom (wl/new-state upgrade-request))))]
-          {:on-connect (middleware on-connect)
-           :on-error   (middleware on-error)
-           :on-close   (middleware on-close)
-           :on-text    (middleware on-text)
-           :on-bytes   (middleware on-bytes)})))))
+    (letfn [(message-bindings [handler state]
+              (fn [& args]
+                (binding
+                  [wl/*state*          state
+                   *encoder*           encoder
+                   *decoder*           decoder
+                   *exception-handler* exception-handler]
+                  (apply handler args))))
+            (exception-handling [handler]
+              (fn [& args]
+                (try
+                  (apply handler args)
+                  (catch Exception e
+                    (*exception-handler* e)))))
+            (custom-middlewares [handler]
+              (reduce #(%2 %1) handler middleware))]
+      (fn [upgrade-request]
+        (letfn
+          [(mw [state handler]
+             (-> handler
+                 (custom-middlewares)
+                 (exception-handling)
+                 (message-bindings state)))]
+          (let [state (atom (wl/new-state upgrade-request))]
+            {:on-connect (bound-fn* (mw state on-connect))
+             :on-error   (bound-fn* (mw state on-error))
+             :on-close   (bound-fn* (mw state on-close))
+             :on-text    (bound-fn* (mw state on-text))
+             :on-bytes   (bound-fn* (mw state on-bytes))}))))))
 
