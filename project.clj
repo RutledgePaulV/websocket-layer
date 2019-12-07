@@ -14,7 +14,7 @@
    ["snapshots" :clojars]]
 
   :dependencies
-  [[org.clojure/clojure "1.10.0"]
+  [[org.clojure/clojure "1.10.1"]
    [org.clojure/core.async "0.6.532"]
    [info.sunng/ring-jetty9-adapter "0.12.5"]
    [metosin/jsonista "0.2.5"]
