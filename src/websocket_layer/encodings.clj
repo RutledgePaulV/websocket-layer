@@ -3,13 +3,30 @@
             [clojure.java.io :as io]
             [cognitect.transit :as transit]
             [clojure.edn :as edn])
-  (:import (java.io ByteArrayOutputStream InputStream PushbackReader)))
+  (:import (java.io ByteArrayOutputStream InputStream PushbackReader)
+           (clojure.lang Reflector)))
 
+(defn class-exists? [s]
+  (try (boolean (Class/forName s))
+       (catch ClassNotFoundException e
+         false)))
+
+(defn instantiate [s & args]
+  (Reflector/invokeConstructor
+    (resolve (symbol s)) (to-array args)))
+
+(defn get-modules []
+  (->> ["com.fasterxml.jackson.datatype.joda.JodaModule"
+        "com.fasterxml.jackson.datatype.jdk8.Jdk8Module"]
+       (filter class-exists?)
+       (mapv instantiate)))
 
 (def mapper
-  (json/object-mapper
-    {:encode-key-fn (fn [x] (if (keyword? x) (name x) x))
-     :decode-key-fn (fn [x] (if (string? x) (keyword x) x))}))
+  (delay
+    (json/object-mapper
+      {:encode-key-fn true
+       :decode-key-fn true
+       :modules       (get-modules)})))
 
 (def encodings
   {:edn
@@ -23,11 +40,11 @@
    :json
    {:encoder
     (fn [data]
-      (json/write-value-as-string data mapper))
+      (json/write-value-as-string data @mapper))
     :decoder
     (fn [^InputStream data]
       (with-open [reader (io/reader data)]
-        (json/read-value reader mapper)))}
+        (json/read-value reader @mapper)))}
    :transit-json
    {:encoder
     (fn [data]

@@ -2,8 +2,11 @@
   (:require [clojure.core.async :as async]
             [ring.adapter.jetty9.websocket :as jws]
             [websocket-layer.core :as wl]
-            [websocket-layer.encodings :as enc])
-  (:import (java.io ByteArrayInputStream)))
+            [websocket-layer.encodings :as enc]
+            [clojure.string :as strings])
+  (:import (java.io ByteArrayInputStream IOException)
+           (org.eclipse.jetty.io EofException)
+           (org.eclipse.jetty.websocket.api CloseException)))
 
 (def ^:dynamic *encoder*)
 (def ^:dynamic *decoder*)
@@ -14,18 +17,40 @@
   [& body]
   `(try ~@body (catch Throwable _# nil)))
 
+(defn insignificant? [e]
+  (or (nil? e)
+      (instance? EofException e)
+      (instance? IOException e)
+      (instance? CloseException e)))
+
+(defn handle-exception [e]
+  (when-not (insignificant? e)
+    (*exception-handler* e)))
+
+(defmacro safe-future [& body]
+  `(future
+     (try ~@body
+          (catch Exception e#
+            (handle-exception e#)))))
+
 (defn send-message! [ws data]
   (let [finished (async/promise-chan)]
-    (jws/send! ws
-      (*encoder* data)
-      {:write-failed
-       (fn [e]
-         (try
-           (*exception-handler* e)
-           (finally
-             (async/close! finished))))
-       :write-success
-       (fn [] (async/close! finished))})
+    (try
+      (jws/send! ws
+        (*encoder* data)
+        {:write-failed
+         (fn [e]
+           (try
+             (handle-exception e)
+             (finally
+               (async/close! finished))))
+         :write-success
+         (fn [] (async/close! finished))})
+      (catch Exception e
+        (try
+          (handle-exception e)
+          (finally
+            (async/close! finished)))))
     finished))
 
 (defn on-connect [ws]
@@ -39,7 +64,7 @@
       (swap! wl/sockets assoc id wl/*state*))))
 
 (defn on-error [_ e]
-  (*exception-handler* e))
+  (handle-exception e))
 
 (defn on-close [_ _ _]
   ; remove visibility of any ongoing activities
@@ -53,32 +78,35 @@
       ; close all the open subscriptions
       (quietly (async/close! sub)))))
 
-(defn on-command [_ command]
+(defn on-command [_ {topic :id
+                     proto :proto
+                     data  :data
+                     close :close
+                     :or   {data {} close false proto :push}}]
+
   (let [closure wl/*state*
-        topic   (get command :id)
-        proto   (keyword (get command :proto))
         {:keys [outbound subscriptions]} (deref closure)]
 
-    (future
+    (case (some-> proto name strings/lower-case keyword)
 
-      (case proto
+      :request
+      (safe-future
+        (let [response (wl/handle-request data)]
+          (async/put! outbound {:data response :proto proto :id topic})))
 
-        :request
-        (let [response (wl/handle-request (:data command))]
-          (async/put! outbound {:data response :proto proto :id topic}))
+      :subscription
+      (cond
 
-        :subscription
-        (cond
+        (true? close)
+        (when-some [sub (get subscriptions topic)]
+          (async/close! sub))
 
-          (true? (get command :close))
-          (when-some [sub (get subscriptions topic)]
-            (async/close! sub))
+        (contains? subscriptions topic)
+        nil
 
-          (contains? subscriptions topic)
-          nil
-
-          :otherwise
-          (when-some [response (wl/handle-subscription (:data command))]
+        :otherwise
+        (safe-future
+          (when-some [response (wl/handle-subscription data)]
             (wl/on-chan-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
             (swap! closure assoc-in [:subscriptions topic] response)
             (async/go-loop []
@@ -86,10 +114,10 @@
                 (if (async/>! outbound {:data res :proto proto :id topic})
                   (recur)
                   (async/close! response))
-                (async/>! outbound {:proto proto :id topic :close true})))))
+                (async/>! outbound {:proto proto :id topic :close true}))))))
 
-        :push
-        (wl/handle-push (:data command))))))
+      :push
+      (safe-future (wl/handle-push data)))))
 
 (defn on-text [ws message]
   (on-command ws (with-open [stream (ByteArrayInputStream. (.getBytes message))]
@@ -106,7 +134,8 @@
     :or   {encoding          :edn
            middleware        []
            exception-handler (fn [^Exception exception]
-                               (when exception
+                               (if-some [handler (Thread/getDefaultUncaughtExceptionHandler)]
+                                 (.uncaughtException handler (Thread/currentThread) exception)
                                  (.printStackTrace exception)))}}]
   (let [encoder (or encoder (get-in enc/encodings [encoding :encoder]))
         decoder (or decoder (get-in enc/encodings [encoding :decoder]))]
@@ -123,20 +152,20 @@
                 (try
                   (apply handler args)
                   (catch Exception e
-                    (*exception-handler* e)))))
+                    (handle-exception e)))))
             (custom-middlewares [handler]
-              (reduce #(%2 %1) handler middleware))]
+              (reduce #(%2 %1) handler middleware))
+            (mw [state handler]
+              (-> handler
+                  (custom-middlewares)
+                  (exception-handling)
+                  (message-bindings state)
+                  (bound-fn*)))]
       (fn [upgrade-request]
-        (letfn
-          [(mw [state handler]
-             (-> handler
-                 (custom-middlewares)
-                 (exception-handling)
-                 (message-bindings state)))]
-          (let [state (atom (wl/new-state upgrade-request))]
-            {:on-connect (bound-fn* (mw state on-connect))
-             :on-error   (bound-fn* (mw state on-error))
-             :on-close   (bound-fn* (mw state on-close))
-             :on-text    (bound-fn* (mw state on-text))
-             :on-bytes   (bound-fn* (mw state on-bytes))}))))))
+        (let [state (atom (wl/new-state upgrade-request))]
+          {:on-connect (mw state on-connect)
+           :on-error   (mw state on-error)
+           :on-close   (mw state on-close)
+           :on-text    (mw state on-text)
+           :on-bytes   (mw state on-bytes)})))))
 
