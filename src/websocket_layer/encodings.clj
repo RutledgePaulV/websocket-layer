@@ -1,10 +1,15 @@
 (ns websocket-layer.encodings
-  (:require [cheshire.core :as chesh]
+  (:require [jsonista.core :as json]
             [clojure.java.io :as io]
             [cognitect.transit :as transit]
             [clojure.edn :as edn])
   (:import (java.io ByteArrayOutputStream InputStream PushbackReader)))
 
+
+(def mapper
+  (json/object-mapper
+    {:encode-key-fn (fn [x] (if (keyword? x) (name x) x))
+     :decode-key-fn (fn [x] (if (string? x) (keyword x) x))}))
 
 (def encodings
   {:edn
@@ -18,11 +23,11 @@
    :json
    {:encoder
     (fn [data]
-      (chesh/generate-string data))
+      (json/write-value-as-string data mapper))
     :decoder
     (fn [^InputStream data]
       (with-open [reader (io/reader data)]
-        (chesh/parse-stream reader true)))}
+        (json/read-value reader mapper)))}
    :transit-json
    {:encoder
     (fn [data]

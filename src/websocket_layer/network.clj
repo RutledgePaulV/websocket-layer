@@ -59,35 +59,37 @@
         proto   (keyword (get command :proto))
         {:keys [outbound subscriptions]} (deref closure)]
 
-    (case proto
+    (future
 
-      :request
-      (let [response (wl/handle-request (:data command))]
-        (async/put! outbound {:data response :proto proto :id topic}))
+      (case proto
 
-      :subscription
-      (cond
+        :request
+        (let [response (wl/handle-request (:data command))]
+          (async/put! outbound {:data response :proto proto :id topic}))
 
-        (true? (get command :close))
-        (when-some [sub (get subscriptions topic)]
-          (async/close! sub))
+        :subscription
+        (cond
 
-        (contains? subscriptions topic)
-        nil
+          (true? (get command :close))
+          (when-some [sub (get subscriptions topic)]
+            (async/close! sub))
 
-        :otherwise
-        (when-some [response (wl/handle-subscription (:data command))]
-          (wl/on-chan-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
-          (swap! closure assoc-in [:subscriptions topic] response)
-          (async/go-loop []
-            (if-some [res (async/<! response)]
-              (if (async/>! outbound {:data res :proto proto :id topic})
-                (recur)
-                (async/close! response))
-              (async/>! outbound {:proto proto :id topic :close true})))))
+          (contains? subscriptions topic)
+          nil
 
-      :push
-      (wl/handle-push (:data command)))))
+          :otherwise
+          (when-some [response (wl/handle-subscription (:data command))]
+            (wl/on-chan-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
+            (swap! closure assoc-in [:subscriptions topic] response)
+            (async/go-loop []
+              (if-some [res (async/<! response)]
+                (if (async/>! outbound {:data res :proto proto :id topic})
+                  (recur)
+                  (async/close! response))
+                (async/>! outbound {:proto proto :id topic :close true})))))
+
+        :push
+        (wl/handle-push (:data command))))))
 
 (defn on-text [ws message]
   (on-command ws (with-open [stream (ByteArrayInputStream. (.getBytes message))]

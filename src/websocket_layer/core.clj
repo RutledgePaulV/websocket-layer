@@ -18,7 +18,7 @@
 (defn new-state [request]
   {:id            (UUID/randomUUID)
    :socket        nil
-   :outbound      (async/chan 20)
+   :outbound      (async/chan 100)
    :request       request
    :subscriptions {}
    :state         {}})

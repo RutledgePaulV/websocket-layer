@@ -15,13 +15,13 @@
 
   :dependencies
   [[org.clojure/clojure "1.10.0"]
-   [org.clojure/core.async "0.4.490"]
-   [info.sunng/ring-jetty9-adapter "0.12.2"]
-   [cheshire "5.8.1"]
-   [com.cognitect/transit-clj "0.8.313"]]
+   [org.clojure/core.async "0.6.532"]
+   [info.sunng/ring-jetty9-adapter "0.12.5"]
+   [metosin/jsonista "0.2.5"]
+   [com.cognitect/transit-clj "0.8.319"]]
 
   :profiles
   {:test
    {:dependencies
-    [[org.eclipse.jetty.websocket/websocket-client "9.4.14.v20181114"]
-     [stylefruits/gniazdo "1.1.1"]]}})
+    [[org.eclipse.jetty.websocket/websocket-client "9.4.20.v20190813"]
+     [stylefruits/gniazdo "1.1.2"]]}})
