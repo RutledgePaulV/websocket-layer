@@ -107,14 +107,17 @@
         :otherwise
         (safe-future
           (when-some [response (wl/handle-subscription data)]
-            (wl/on-chan-close response (fn [] (swap! closure update :subscriptions dissoc topic)))
             (swap! closure assoc-in [:subscriptions topic] response)
             (async/go-loop []
               (if-some [res (async/<! response)]
                 (if (async/>! outbound {:data res :proto proto :id topic})
                   (recur)
-                  (async/close! response))
-                (async/>! outbound {:proto proto :id topic :close true}))))))
+                  (do (swap! closure update :subscriptions dissoc topic)
+                      (async/close! response)))
+                (let [[{old-subs :subscriptions}]
+                      (swap-vals! closure update :subscriptions dissoc topic)]
+                  (when (contains? old-subs topic)
+                    (async/>! outbound {:proto proto :id topic :close true}))))))))
 
       :push
       (safe-future (wl/handle-push data)))))

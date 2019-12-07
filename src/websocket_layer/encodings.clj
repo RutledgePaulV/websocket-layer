@@ -4,7 +4,9 @@
             [cognitect.transit :as transit]
             [clojure.edn :as edn])
   (:import (java.io ByteArrayOutputStream InputStream PushbackReader)
-           (clojure.lang Reflector)))
+           (clojure.lang Reflector)
+           (com.fasterxml.jackson.core JsonGenerator)
+           (java.util UUID)))
 
 (defn class-exists? [s]
   (try (boolean (Class/forName s))
@@ -21,12 +23,26 @@
        (filter class-exists?)
        (mapv instantiate)))
 
+(defn get-encoders []
+  (cond-> {}
+    :always
+    (assoc
+      UUID
+      (fn [^UUID id ^JsonGenerator generator]
+        (.writeString generator (str id))))
+    (class-exists? "org.bson.types.ObjectId")
+    (assoc
+      (Class/forName "org.bson.types.ObjectId")
+      (fn [id ^JsonGenerator generator]
+        (.writeString generator (.toHexString id))))))
+
 (def mapper
   (delay
     (json/object-mapper
       {:encode-key-fn true
        :decode-key-fn true
-       :modules       (get-modules)})))
+       :modules       (get-modules)
+       :encoders      (get-encoders)})))
 
 (def encodings
   {:edn

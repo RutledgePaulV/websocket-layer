@@ -23,6 +23,9 @@
    :subscriptions {}
    :state         {}})
 
+(defn get-socket-id []
+  (some-> *state* deref :id))
+
 (defn get-socket []
   (some-> *state* deref :socket))
 
