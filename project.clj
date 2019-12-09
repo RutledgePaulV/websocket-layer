@@ -16,6 +16,7 @@
   :dependencies
   [[org.clojure/clojure "1.10.1"]
    [org.clojure/core.async "0.6.532"]
+   [io.aleph/dirigiste "0.1.5"]
    [info.sunng/ring-jetty9-adapter "0.12.5"]
    [metosin/jsonista "0.2.5"]
    [com.cognitect/transit-clj "0.8.319"]]

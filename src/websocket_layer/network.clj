@@ -6,11 +6,14 @@
             [clojure.string :as strings])
   (:import (java.io ByteArrayInputStream IOException)
            (org.eclipse.jetty.io EofException)
-           (org.eclipse.jetty.websocket.api CloseException)))
+           (org.eclipse.jetty.websocket.api CloseException)
+           (io.aleph.dirigiste Executors)
+           (java.util.concurrent Executor)))
 
 (def ^:dynamic *encoder*)
 (def ^:dynamic *decoder*)
 (def ^:dynamic *exception-handler*)
+(def ^:dynamic ^Executor *executor*)
 
 (defmacro quietly
   "Execute the body and return nil if there was an error"
@@ -28,10 +31,13 @@
     (*exception-handler* e)))
 
 (defmacro safe-future [& body]
-  `(future
-     (try ~@body
-          (catch Exception e#
-            (handle-exception e#)))))
+  `(let [fun#
+         (#'clojure.core/binding-conveyor-fn
+           (^{:once true} fn* []
+             (try ~@body
+                  (catch Exception e#
+                    (handle-exception e#)))))]
+     (.execute *executor* fun#)))
 
 (defn send-message! [ws data]
   (let [finished (async/promise-chan)]
@@ -133,21 +139,27 @@
                      (*decoder* stream)))))
 
 (defn websocket-handler
-  [{:keys [exception-handler encoding encoder decoder middleware]
-    :or   {encoding          :edn
-           middleware        []
-           exception-handler (fn [^Exception exception]
-                               (if-some [handler (Thread/getDefaultUncaughtExceptionHandler)]
-                                 (.uncaughtException handler (Thread/currentThread) exception)
-                                 (.printStackTrace exception)))}}]
-  (let [encoder (or encoder (get-in enc/encodings [encoding :encoder]))
-        decoder (or decoder (get-in enc/encodings [encoding :decoder]))]
+  [{:keys [exception-handler encoding encoder decoder middleware target-utilization max-threads]
+    :or   {encoding           :edn
+           middleware         []
+           target-utilization 0.8
+           max-threads        200
+           exception-handler  (fn [^Exception exception]
+                                (if-some [handler (Thread/getDefaultUncaughtExceptionHandler)]
+                                  (.uncaughtException handler (Thread/currentThread) exception)
+                                  (.printStackTrace exception)))}}]
+  (let [encoder  (or encoder (get-in enc/encodings [encoding :encoder]))
+        decoder  (or decoder (get-in enc/encodings [encoding :decoder]))
+        executor (Executors/utilizationExecutor target-utilization max-threads)]
+    (->> (Thread. ^Runnable (fn [] (.shutdown executor)))
+         (.addShutdownHook (Runtime/getRuntime)))
     (letfn [(message-bindings [handler state]
               (fn [& args]
                 (binding
                   [wl/*state*          state
                    *encoder*           encoder
                    *decoder*           decoder
+                   *executor*          executor
                    *exception-handler* exception-handler]
                   (apply handler args))))
             (exception-handling [handler]
