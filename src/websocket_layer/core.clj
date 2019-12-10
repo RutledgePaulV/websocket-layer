@@ -1,19 +1,9 @@
 (ns websocket-layer.core
   (:require [clojure.core.async :as async])
-  (:import (java.util UUID)
-           (clojure.core.async.impl.channels ManyToManyChannel)))
+  (:import (java.util UUID)))
 
 (def ^:dynamic *state* nil)
 (defonce sockets (atom {}))
-
-(defn on-chan-close [^ManyToManyChannel chan f]
-  (add-watch
-    (.closed chan)
-    (UUID/randomUUID)
-    (fn [_ _ old-state new-state]
-      (when (and (not old-state) new-state)
-        (try (f) (catch Exception e nil)))))
-  chan)
 
 (defn new-state [request]
   {:id            (UUID/randomUUID)
