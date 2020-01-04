@@ -4,11 +4,12 @@
             [websocket-layer.core :as wl]
             [websocket-layer.encodings :as enc]
             [clojure.string :as strings])
-  (:import (java.io ByteArrayInputStream IOException)
+  (:import (java.io ByteArrayInputStream)
            (org.eclipse.jetty.io EofException)
            (org.eclipse.jetty.websocket.api CloseException)
            (io.aleph.dirigiste Executors)
-           (java.util.concurrent Executor)))
+           (java.util.concurrent Executor)
+           (java.nio.channels ClosedChannelException)))
 
 (def ^:dynamic *encoder*)
 (def ^:dynamic *decoder*)
@@ -23,8 +24,8 @@
 (defn insignificant? [e]
   (or (nil? e)
       (instance? EofException e)
-      (instance? IOException e)
-      (instance? CloseException e)))
+      (instance? CloseException e)
+      (instance? ClosedChannelException e)))
 
 (defn handle-exception [e]
   (when-not (insignificant? e)
@@ -143,7 +144,7 @@
     :or   {encoding           :edn
            middleware         []
            target-utilization 0.8
-           max-threads        200
+           max-threads        1000
            exception-handler  (fn [^Exception exception]
                                 (if-some [handler (Thread/getDefaultUncaughtExceptionHandler)]
                                   (.uncaughtException handler (Thread/currentThread) exception)
