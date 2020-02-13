@@ -6,7 +6,7 @@
             [clojure.string :as strings])
   (:import (java.io ByteArrayInputStream)
            (org.eclipse.jetty.io EofException)
-           (org.eclipse.jetty.websocket.api CloseException)
+           (org.eclipse.jetty.websocket.api CloseException WriteCallback RemoteEndpoint)
            (io.aleph.dirigiste Executors)
            (java.util.concurrent Executor)
            (java.nio.channels ClosedChannelException)))
@@ -43,16 +43,20 @@
 (defn send-message! [ws data]
   (let [finished (async/promise-chan)]
     (try
-      (jws/send! ws
-        (*encoder* data)
-        {:write-failed
-         (fn [e]
-           (try
-             (handle-exception e)
-             (finally
-               (async/close! finished))))
-         :write-success
-         (fn [] (async/close! finished))})
+      (let [message  (*encoder* data)
+            callback (jws/write-callback
+                       {:write-failed
+                        (fn [e]
+                          (try
+                            (handle-exception e)
+                            (finally
+                              (async/close! finished))))
+                        :write-success
+                        (fn [] (async/close! finished))})]
+        (jws/send! ws
+          (fn [^RemoteEndpoint endpoint]
+            (when (some? endpoint)
+              (.sendString endpoint message ^WriteCallback callback)))))
       (catch Exception e
         (try
           (handle-exception e)
