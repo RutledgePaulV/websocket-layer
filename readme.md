@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/RutledgePaulV/websocket-layer.svg?branch=develop)](https://travis-ci.org/RutledgePaulV/websocket-layer)
+[![Build Status](https://travis-ci.com/RutledgePaulV/websocket-layer.svg?branch=develop)](https://travis-ci.com/RutledgePaulV/websocket-layer)
 [![Clojars Project](https://img.shields.io/clojars/v/org.clojars.rutledgepaulv/websocket-layer.svg)](https://clojars.org/org.clojars.rutledgepaulv/websocket-layer)
 
 ## Websocket Layer
