@@ -15,7 +15,7 @@
 
   :dependencies
   [[org.clojure/clojure "1.10.1"]
-   [org.clojure/core.async "0.6.532"]
+   [org.clojure/core.async "0.7.559"]
    [io.aleph/dirigiste "0.1.5"]
    [info.sunng/ring-jetty9-adapter "0.12.5"]
    [metosin/jsonista "0.2.5"]
@@ -25,4 +25,4 @@
   {:test
    {:dependencies
     [[org.eclipse.jetty.websocket/websocket-client "9.4.20.v20190813"]
-     [stylefruits/gniazdo "1.1.2"]]}})
+     [stylefruits/gniazdo "1.1.3"]]}})
