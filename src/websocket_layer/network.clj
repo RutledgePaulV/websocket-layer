@@ -41,22 +41,22 @@
      (.execute *executor* fun#)))
 
 (defn send-message! [ws data]
-  (let [finished (async/promise-chan)]
+  (let [finished (async/promise-chan)
+        callback (#'jws/write-callback
+                   {:write-failed
+                    (fn [e]
+                      (try
+                        (handle-exception e)
+                        (finally
+                          (async/close! finished))))
+                    :write-success
+                    (fn [] (async/close! finished))})]
     (try
-      (let [message  (*encoder* data)
-            callback (jws/write-callback
-                       {:write-failed
-                        (fn [e]
-                          (try
-                            (handle-exception e)
-                            (finally
-                              (async/close! finished))))
-                        :write-success
-                        (fn [] (async/close! finished))})]
-        (jws/send! ws
-          (fn [^RemoteEndpoint endpoint]
-            (when (some? endpoint)
-              (.sendString endpoint message ^WriteCallback callback)))))
+      (jws/send! ws
+        (fn [^RemoteEndpoint endpoint]
+          (when (some? endpoint)
+            (let [msg (*encoder* data)]
+              (.sendString endpoint msg ^WriteCallback callback)))))
       (catch Exception e
         (try
           (handle-exception e)
