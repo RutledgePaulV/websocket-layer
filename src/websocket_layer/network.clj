@@ -33,7 +33,7 @@
 
 (defmacro safe-future [& body]
   `(let [fun#
-         (#'clojure.core/binding-conveyor-fn
+         (bound-fn*
            (^{:once true} fn* []
              (try ~@body
                   (catch Exception e#
