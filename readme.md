@@ -4,8 +4,8 @@
 ## Websocket Layer
 
 A clojure library that provides a little glue between jetty websockets and core.async.
-This library only provides the server implementation. In the future I may provide client 
-counterparts for both rxjs and clojurescript core.async.
+This library only provides the server implementation. I also created a re-frame client-side
+counterpart called [websocket-fx](https://github.com/RutledgePaulV/websocket-fx).
 
 ___
 
