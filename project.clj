@@ -24,5 +24,5 @@
   :profiles
   {:test
    {:dependencies
-    [[org.eclipse.jetty.websocket/websocket-client "9.4.27.v20200227"]
+    [[org.eclipse.jetty.websocket/websocket-client "9.4.20.v20190813"]
      [stylefruits/gniazdo "1.1.3"]]}})
