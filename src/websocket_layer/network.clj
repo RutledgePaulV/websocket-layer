@@ -3,13 +3,33 @@
             [ring.adapter.jetty9.websocket :as jws]
             [websocket-layer.core :as wl]
             [websocket-layer.encodings :as enc]
-            [clojure.string :as strings])
+            [clojure.string :as strings]
+            [ring.adapter.jetty9.common :as jc]
+            [ring.util.servlet :as rus])
   (:import (java.io ByteArrayInputStream)
            (org.eclipse.jetty.io EofException)
            (org.eclipse.jetty.websocket.api CloseException WriteCallback RemoteEndpoint)
            (io.aleph.dirigiste Executors)
            (java.util.concurrent Executor)
-           (java.nio.channels ClosedChannelException)))
+           (java.nio.channels ClosedChannelException)
+           (org.eclipse.jetty.websocket.servlet ServletUpgradeRequest)
+           (java.util Locale)))
+
+(extend-protocol jc/RequestMapDecoder
+  ServletUpgradeRequest
+  (build-request-map [^ServletUpgradeRequest request]
+    (let [delegate (.getHttpServletRequest request)]
+      {:server-port       (.getServerPort delegate)
+       :server-name       (.getServerName delegate)
+       :remote-addr       (.getRemoteAddr delegate)
+       :uri               (.getRequestURI delegate)
+       :query-string      (.getQueryString delegate)
+       :scheme            (keyword (.getScheme delegate))
+       :request-method    (keyword (.toLowerCase (.getMethod delegate) Locale/ENGLISH))
+       :protocol          (.getProtocol delegate)
+       :headers           (#'rus/get-headers delegate)
+       :ssl-client-cert   (#'rus/get-client-cert delegate)
+       :websocket-upgrade true})))
 
 (def ^:dynamic *encoder*)
 (def ^:dynamic *decoder*)
