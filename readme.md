@@ -89,8 +89,8 @@ Handlers look like this:
  (let [results (async/chan)]
    (async/go-loop []
      (async/<! (async/timeout 5000))
-     (async/>! results {:stuff :you-return})
-     (recur))
+     (when (async/>! results {:stuff :you-return})
+      (recur)))
    results))
 ```
 
