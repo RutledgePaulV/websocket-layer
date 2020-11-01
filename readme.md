@@ -13,7 +13,8 @@ ___
 
 Websockets are still low on the abstraction level. This library provides a few
 patterns and state management on top of raw websockets that are closer to what 
-I want within my applications.
+I want within my applications. Turns out these abstractions are sort of fundamental
+since they are the same as those arrived at by https://rsocket.io/. 
 
 
 ### Installation
